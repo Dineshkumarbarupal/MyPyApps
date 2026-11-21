@@ -5,7 +5,8 @@ ITERATIONS=310000
 def _hash(value,salt=None):
     salt=salt or secrets.token_hex(16)
     return salt,hashlib.pbkdf2_hmac("sha256",value.encode(),bytes.fromhex(salt),ITERATIONS).hex()
-def _verify(value,salt,expected):return hmac.compare_digest(_hash(value,salt)[1],expected)
+def _verify(value,salt,expected):
+    return hmac.compare_digest(_hash(value,salt)[1],expected)
 def register(name,email,password):
     name=" ".join((name or "").split());email=(email or "").strip().lower()
     if not 2<=len(name)<=60:raise ValueError("Name must contain 2 to 60 characters.")
@@ -23,6 +24,4 @@ def reset_password(email,code,new_password):
     if not 10<=len(new_password or "")<=128:raise ValueError("New password must contain 10 to 128 characters.")
     row=query_one("SELECT * FROM users WHERE email=?",((email or "").strip().lower(),))
     if not row or not _verify(code or "",row["recovery_salt"],row["recovery_hash"]):raise ValueError("Email or recovery code is incorrect.")
-    salt,digest=_hash(new_password);new_code=secrets.token_urlsafe(24);rs,rh=_hash(new_code)
-    execute("UPDATE users SET password_salt=?,password_hash=?,recovery_salt=?,recovery_hash=? WHERE id=?",(salt,digest,rs,rh,row["id"]))
-    return new_code
+    salt,digest=_hash(new_password);execute("UPDATE users SET password_salt=?,password_hash=? WHERE id=?",(salt,digest,row["id"]))

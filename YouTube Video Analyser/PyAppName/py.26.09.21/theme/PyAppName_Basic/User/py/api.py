@@ -1,9 +1,9 @@
 from __future__ import annotations
-import logging,os,shutil,subprocess,sys
+import json,logging,os,shutil,subprocess,sys
 from pathlib import Path
 import eel
 import auth_service,github_service,job_service,session_manager
-from database import query_one,execute
+from database import query_one,query_all,execute
 log=logging.getLogger(__name__);USER_DIR=None;KEYRING="youtube-video-analyser"
 def configure_api(user_dir):
     global USER_DIR;USER_DIR=user_dir.resolve()
@@ -29,7 +29,7 @@ def api_login(email,password):
     except Exception as e:return _error(e)
 @eel.expose
 def api_reset_password(email,code,password):
-    try:auth_service.reset_password(email,code,password);return {"ok":True}
+    try:return {"ok":True,"recovery_code":auth_service.reset_password(email,code,password)}
     except Exception as e:return _error(e)
 @eel.expose
 def api_logout():session_manager.set_user(None);return {"ok":True}
@@ -83,7 +83,8 @@ def api_upload_job(job_id,repo,token="",remember=False):
             except Exception:secret=""
         job=job_service.get_job(u["id"],job_id)
         if job["status"] not in {"completed","partial"}:raise ValueError("Wait for processing to finish before uploading.")
-        user_root=(_output(u)/u["id"]).resolve();artifacts=[]
+        output_root=Path(job["output_dir"] or _output(u)).expanduser().resolve()
+        user_root=(output_root/u["id"]).resolve();artifacts=[]
         for a in job["artifacts"]:
             candidate=Path(a["path"]).resolve()
             if user_root not in candidate.parents:raise PermissionError("Artifact path failed account-isolation validation.")
@@ -95,9 +96,15 @@ def api_upload_job(job_id,repo,token="",remember=False):
 @eel.expose
 def api_open_output(path):
     try:
-        u=_user();candidate=Path(path).expanduser().resolve();root=(_output(u)/u["id"]).resolve()
-        if root not in candidate.parents and candidate!=root:raise PermissionError("File is outside this account's output folder.")
-        target=candidate if candidate.is_dir() else candidate.parent
+        u=_user();candidate=Path(path).expanduser().resolve()
+        rows=query_all("SELECT artifacts_json FROM jobs WHERE user_id=?",(u["id"],))
+        allowed=set()
+        for row in rows:
+            for item in json.loads(row["artifacts_json"] or "[]"):
+                try:allowed.add(Path(item["path"]).resolve())
+                except (KeyError,TypeError):pass
+        if candidate not in allowed:raise PermissionError("File is not one of this account's saved job artifacts.")
+        target=candidate.parent
         if sys.platform=="win32":os.startfile(str(target))
         elif sys.platform=="darwin":subprocess.Popen(["open",str(target)])
         else:subprocess.Popen(["xdg-open",str(target)])

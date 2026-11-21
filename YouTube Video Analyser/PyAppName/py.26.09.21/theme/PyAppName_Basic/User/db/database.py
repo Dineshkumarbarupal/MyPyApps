@@ -1,8 +1,8 @@
 from __future__ import annotations
-import os, sqlite3
+import os,sqlite3
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, Any
+from typing import Iterator,Any
 USER_DIR=Path(__file__).resolve().parents[1]
 DATA_DIR=Path(os.getenv("YTA_DATA_DIR",USER_DIR/"data")).expanduser()
 DB_PATH=Path(os.getenv("YTA_DB_PATH",DATA_DIR/"app.sqlite3")).expanduser()
@@ -14,11 +14,16 @@ def connect():
 @contextmanager
 def database()->Iterator[sqlite3.Connection]:
     c=connect()
-    try: yield c;c.commit()
-    except Exception: c.rollback();raise
-    finally: c.close()
+    try:yield c;c.commit()
+    except Exception:c.rollback();raise
+    finally:c.close()
 def initialize_database():
-    with database() as c:c.execute("PRAGMA journal_mode=WAL");c.executescript(SCHEMA.read_text(encoding="utf-8"))
+    with database() as c:
+        c.execute("PRAGMA journal_mode=WAL")
+        c.executescript(SCHEMA.read_text(encoding="utf-8"))
+        columns={row["name"] for row in c.execute("PRAGMA table_info(jobs)").fetchall()}
+        if "output_dir" not in columns:
+            c.execute("ALTER TABLE jobs ADD COLUMN output_dir TEXT NOT NULL DEFAULT ''")
 def query_one(sql:str,params:tuple[Any,...]=()):
     with database() as c:
         row=c.execute(sql,params).fetchone();return dict(row) if row else None

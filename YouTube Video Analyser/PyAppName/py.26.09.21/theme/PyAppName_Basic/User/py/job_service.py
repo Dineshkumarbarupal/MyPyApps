@@ -25,7 +25,8 @@ def start_batch(user_id,urls_text,options,output_dir):
     for url in urls:validate_youtube_url(url)
     ids=[]
     for url in urls:
-        jid=str(uuid.uuid4());execute("INSERT INTO jobs(id,user_id,url,status,options_json) VALUES(?,?,?,'queued',?)",(jid,user_id,url,json.dumps(options)))
+        jid=str(uuid.uuid4())
+        execute("INSERT INTO jobs(id,user_id,url,status,options_json,output_dir) VALUES(?,?,?,'queued',?,?)",(jid,user_id,url,json.dumps(options),str(Path(output_dir).expanduser().resolve())))
         ids.append(jid);pool.submit(_run,jid,user_id,url,dict(options),output_dir)
     return ids
 def list_jobs(user_id,limit=50):

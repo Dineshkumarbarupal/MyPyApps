@@ -1,0 +1,1 @@
+(() => { const call=(name,...args)=>{if(!window.eel||typeof window.eel[name]!=="function")return Promise.resolve({ok:false,error:"Python bridge is unavailable. Restart the app."});try{return window.eel[name](...args)()}catch(e){return Promise.resolve({ok:false,error:e.message})}};window.YTAApi={call}; })();

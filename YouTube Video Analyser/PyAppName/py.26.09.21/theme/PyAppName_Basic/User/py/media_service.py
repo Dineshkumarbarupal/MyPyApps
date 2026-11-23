@@ -97,6 +97,7 @@ def _youtube_options(cookies_browser: str | None = None) -> dict[str, Any]:
         "fragment_retries": 2,
         "extractor_retries": 1,
         "sleep_interval_requests": 1,
+        # A pasted watch URL can contain a playlist; process only the requested video.\n        "noplaylist": True,
     }
     browser = (cookies_browser or "").strip().lower()
     if browser in SUPPORTED_COOKIE_BROWSERS:

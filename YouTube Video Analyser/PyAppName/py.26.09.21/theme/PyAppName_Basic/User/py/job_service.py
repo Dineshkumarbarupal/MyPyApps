@@ -62,16 +62,18 @@ def start_batch(user_id, urls_text, options, output_dir):
     for url in urls:
         validate_youtube_url(url)
 
+    # Persist the exact output location on each job. Upload and recovery flows rely on it.
+    resolved_output_dir = str(Path(output_dir).expanduser().resolve())
     job_ids = []
     for url in urls:
         job_id = str(uuid.uuid4())
         execute(
             """INSERT INTO jobs(id,user_id,url,status,options_json,output_dir)
                VALUES(?,?,?,'queued',?,?)""",
-            (job_id, user_id, url, json.dumps(options), str(Path(output_dir).expanduser().resolve())),
+            (job_id, user_id, url, json.dumps(options), resolved_output_dir),
         )
         job_ids.append(job_id)
-        pool.submit(_run, job_id, user_id, url, dict(options), output_dir)
+        pool.submit(_run, job_id, user_id, url, dict(options), resolved_output_dir)
     return job_ids
 
 

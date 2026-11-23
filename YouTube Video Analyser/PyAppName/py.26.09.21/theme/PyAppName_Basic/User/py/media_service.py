@@ -157,8 +157,17 @@ def process_video(
     output_root = Path(output_dir).expanduser().resolve()
     output_root.mkdir(parents=True, exist_ok=True)
 
-    with yt_dlp.YoutubeDL({**common, "skip_download": True}) as ydl:
-        info = ydl.extract_info(url, download=False)
+    try:
+        with yt_dlp.YoutubeDL({**common, "skip_download": True}) as ydl:
+            info = ydl.extract_info(url, download=False)
+    except Exception as exc:
+        lowered = str(exc).lower()
+        if "this video is not available" in lowered or "video unavailable" in lowered:
+            raise ValueError(
+                "This YouTube video is unavailable (it may be deleted, private, age-restricted, "
+                "region-blocked, or otherwise inaccessible). Try a different video or check it in your browser."
+            ) from exc
+        raise
 
     title = info.get("title") or "YouTube video"
     job_dir = output_root / (_safe_title(title, video_id) + f" [{video_id}]")

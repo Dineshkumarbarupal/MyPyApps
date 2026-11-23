@@ -37,5 +37,5 @@ def test_initialize_database_adds_output_dir_to_existing_jobs_table(tmp_path, mo
 
     # Migration must be safe to run on every application startup.
     initialize_database()
-    columns = {row["name"] for row in sqlite3.connect(database_path).execute("PRAGMA table_info(jobs)")}
+    columns = {row[1] for row in sqlite3.connect(database_path).execute("PRAGMA table_info(jobs)")}
     assert "output_dir" in columns

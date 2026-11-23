@@ -170,7 +170,7 @@ def process_video(
         raise
 
     title = info.get("title") or "YouTube video"
-    job_dir = output_root / (_safe_title(title, video_id) + f" [{video_id}]")
+    # Keep Windows paths short: use the stable video ID as the folder name, not the full title.\n    # Long titles combined with nested app/user/export paths trigger WinError 206.\n    job_dir = output_root / video_id
     job_dir.mkdir(parents=True, exist_ok=True)
     artifacts: list[dict[str, str]] = []
     warnings: list[str] = []
